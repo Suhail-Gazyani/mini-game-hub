@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mini Game Hub — TicTacToe | RPS | Memory</title>
+  <style>
+    :root{--bg:#0f1724;--card:#111827;--accent:#0ea5a4;--muted:#94a3b8;--panel:#0b1220}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#061021,#07132a);color:#e6eef6;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+    header{padding:22px 16px;text-align:center}
+    h1{margin:0;font-size:22px}
+    .subtitle{color:var(--muted);margin-top:6px;font-size:13px}
+    .hub{width:100%;max-width:960px;padding:18px}
+    .menu{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
+    .menu button{background:transparent;border:2px solid rgba(255,255,255,0.06);padding:14px 18px;border-radius:10px;color:inherit;cursor:pointer;min-width:180px}
+    .menu button:hover{border-color:var(--accent)}
+    .game-panel{background:rgba(255,255,255,0.03);padding:16px;border-radius:12px;min-height:220px}
+    .hidden{display:none}
+
+    /* TicTacToe */
+    .ttt-board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:360px;margin:14px auto}
+    .ttt-cell{background:#fff;border:none;border-radius:8px;height:100px;font-size:46px;cursor:pointer}
+    .ttt-cell.win{background:linear-gradient(90deg,#ffe082,#ffab91)}
+
+    /* RPS */
+    .rps-row{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+    .rps-row button{padding:12px 16px;border-radius:8px;border:none;cursor:pointer;font-size:16px}
+    .rps-stats{margin-top:12px;color:var(--muted)}
+
+    /* Memory */
+    .memory-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:460px;margin:12px auto}
+    .card{background:linear-gradient(180deg,#0b1220,#07101a);height:90px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;border:2px solid rgba(255,255,255,0.04)}
+    .card.flipped{background:#ffffff;color:#000;border-color:rgba(255,255,255,0.12);font-weight:700}
+    .card.matched{background:linear-gradient(90deg,#34d399,#60a5fa);color:#012}
+
+    .controls{display:flex;gap:8px;justify-content:center;margin-top:12px}
+    .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+    .btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+
+    footer{margin:18px 0;color:var(--muted);font-size:13px}
+
+    @media (max-width:520px){.ttt-cell{height:74px;font-size:34px}.card{height:72px}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎮 Mini Game Hub</h1>
+    <div class="subtitle">Tic-Tac-Toe • Rock Paper Scissors • Card Matching (Numbers)</div>
+  </header>
+
+  <main class="hub">
+    <div id="menu" class="menu">
+      <button data-game="ttt">Tic Tac Toe</button>
+      <button data-game="rps">Rock Paper Scissors</button>
+      <button data-game="memory">Card Matching</button>
+    </div>
+
+    <!-- Game panels -->
+    <section id="ttt" class="game-panel hidden">
+      <h2>Tic Tac Toe</h2>
+      <div id="ttt-message" style="color:var(--muted);margin-top:6px"></div>
+      <div class="ttt-board" id="ttt-board" aria-label="Tic Tac Toe board"></div>
+      <div class="controls">
+        <button id="ttt-restart" class="btn">Restart</button>
+        <button class="btn secondary back">Back to Hub</button>
+      </div>
+    </section>
+
+    <section id="rps" class="game-panel hidden">
+      <h2>Rock · Paper · Scissors</h2>
+      <div style="margin-top:8px;color:var(--muted)" id="rps-message">Choose one:</div>
+      <div class="rps-row" style="margin-top:12px">
+        <button data-choice="rock" class="btn">🪨 Rock</button>
+        <button data-choice="paper" class="btn">📄 Paper</button>
+        <button data-choice="scissors" class="btn">✂️ Scissors</button>
+      </div>
+      <div id="rps-result" style="margin-top:12px;color:var(--muted)"></div>
+      <div class="rps-stats" id="rps-stats"></div>
+      <div class="controls">
+        <button id="rps-reset" class="btn">Reset Score</button>
+        <button class="btn secondary back">Back to Hub</button>
+      </div>
+    </section>
+
+    <section id="memory" class="game-panel hidden">
+      <h2>Card Matching — Numbers</h2>
+      <div id="memory-message" style="color:var(--muted);margin-top:6px"></div>
+      <div class="memory-grid" id="memory-grid"></div>
+      <div class="controls">
+        <button id="memory-restart" class="btn">Restart</button>
+        <button class="btn secondary back">Back to Hub</button>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>Open this file in a browser (Chrome/Firefox/Edge). If something still fails, open the browser console (F12) and tell me the error.</footer>
+
+<script>
+// ---------- Navigation ----------
+const menu = document.getElementById('menu');
+const panels = { ttt: document.getElementById('ttt'), rps: document.getElementById('rps'), memory: document.getElementById('memory') };
+menu.addEventListener('click', e => {
+  const btn = e.target.closest('button'); if(!btn) return;
+  const game = btn.dataset.game; if(!game) return;
+  openGame(game);
+});
+document.querySelectorAll('.back').forEach(b => b.addEventListener('click', () => { closeAll(); }));
+function openGame(id){ menu.classList.add('hidden'); Object.values(panels).forEach(p=>p.classList.add('hidden')); panels[id].classList.remove('hidden'); if(id==='ttt') initTicTacToe(); if(id==='rps') initRPS(); if(id==='memory') initMemory(); }
+function closeAll(){ menu.classList.remove('hidden'); Object.values(panels).forEach(p=>p.classList.add('hidden')); }
+
+// ---------- Tic Tac Toe ----------
+let tttState, tttTurn, tttActive;
+const tttBoardEl = document.getElementById('ttt-board');
+const tttMessageEl = document.getElementById('ttt-message');
+const winPatterns = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+function initTicTacToe(){
+  tttState = Array(9).fill(null); tttTurn = 'X'; tttActive = true; tttMessageEl.textContent = `Turn: ${tttTurn}`;
+  tttBoardEl.innerHTML = '';
+  for(let i=0;i<9;i++){
+    const btn = document.createElement('button'); btn.className='ttt-cell'; btn.dataset.index = i; btn.setAttribute('aria-label', 'cell '+(i+1)); btn.addEventListener('click', tttHandleClick); tttBoardEl.appendChild(btn);
+  }
+}
+function tttHandleClick(e){
+  const idx = Number(e.currentTarget.dataset.index);
+  if(!tttActive) return;
+  if(tttState[idx]) return; // occupied
+  tttState[idx] = tttTurn; e.currentTarget.textContent = tttTurn;
+  // check winner
+  for(const pattern of winPatterns){
+    const [a,b,c] = pattern; if(tttState[a] && tttState[a]===tttState[b] && tttState[a]===tttState[c]){
+      // mark win
+      tttActive = false; tttMessageEl.textContent = `${tttTurn} wins!`;
+      // highlight cells
+      pattern.forEach(i=>{ tttBoardEl.children[i].classList.add('win'); });
+      return;
+    }
+  }
+  // draw?
+  if(tttState.every(v=>v!==null)){
+    tttActive = false; tttMessageEl.textContent = `It's a draw!`;
+    return;
+  }
+  // continue
+  tttTurn = tttTurn === 'X' ? 'O' : 'X'; tttMessageEl.textContent = `Turn: ${tttTurn}`;
+}
+
+// restart button
+document.getElementById('ttt-restart').addEventListener('click', ()=>{ initTicTacToe(); });
+
+// ---------- Rock Paper Scissors ----------
+let rpsScore = { you:0, comp:0, ties:0 };
+const rpsResultEl = document.getElementById('rps-result');
+const rpsStatsEl = document.getElementById('rps-stats');
+function initRPS(){ updateRPSStats(); rpsResultEl.textContent = '' }
+function updateRPSStats(){ rpsStatsEl.textContent = `You: ${rpsScore.you} · Computer: ${rpsScore.comp} · Ties: ${rpsScore.ties}` }
+
+document.querySelectorAll('#rps button[data-choice]').forEach(b=> b.addEventListener('click', ()=>{
+  const you = b.dataset.choice;
+  const choices = ['rock','paper','scissors'];
+  const comp = choices[Math.floor(Math.random()*3)];
+  let msg = `You: ${you} · Computer: ${comp} — `;
+  if(you===comp){ rpsScore.ties++; msg += "It's a tie!"; }
+  else if((you==='rock' && comp==='scissors') || (you==='paper' && comp==='rock') || (you==='scissors' && comp==='paper')){ rpsScore.you++; msg += 'You win!'; }
+  else { rpsScore.comp++; msg += 'You lose!'; }
+  rpsResultEl.textContent = msg; updateRPSStats();
+}));
+
+document.getElementById('rps-reset').addEventListener('click', ()=>{ rpsScore = { you:0, comp:0, ties:0 }; updateRPSStats(); rpsResultEl.textContent=''; });
+
+// ---------- Memory (Card Matching) ----------
+let memoryValues = [], firstCard=null, secondCard=null, busy=false, matchedPairs=0;
+const memoryGrid = document.getElementById('memory-grid');
+const memoryMessage = document.getElementById('memory-message');
+function initMemory(){
+  // values 1..8 duplicated
+  memoryValues = [];
+  for(let i=1;i<=8;i++) memoryValues.push(i), memoryValues.push(i);
+  // shuffle (Fisher-Yates)
+  for(let i=memoryValues.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [memoryValues[i],memoryValues[j]]=[memoryValues[j],memoryValues[i]] }
+  memoryGrid.innerHTML = '';
+  firstCard = null; secondCard=null; busy=false; matchedPairs=0; memoryMessage.textContent = 'Find all pairs!';
+  memoryValues.forEach((val, idx)=>{
+    const b = document.createElement('button'); b.className='card'; b.dataset.value = val; b.dataset.index = idx; b.setAttribute('aria-label','card'); b.addEventListener('click', onCardClick); memoryGrid.appendChild(b);
+  });
+}
+function onCardClick(e){
+  const btn = e.currentTarget;
+  if(busy) return; if(btn.classList.contains('flipped')||btn.classList.contains('matched')) return;
+  // flip it
+  btn.classList.add('flipped'); btn.textContent = btn.dataset.value;
+  if(!firstCard){ firstCard = btn; return; }
+  if(firstCard === btn) return; // same card
+  secondCard = btn; busy = true;
+  setTimeout(()=>{
+    if(firstCard.dataset.value === secondCard.dataset.value){
+      firstCard.classList.add('matched'); secondCard.classList.add('matched'); matchedPairs++;
+      firstCard.disabled = true; secondCard.disabled = true;
+      memoryMessage.textContent = `Matched pairs: ${matchedPairs} / ${memoryValues.length/2}`;
+      if(matchedPairs === memoryValues.length/2){ memoryMessage.textContent = 'You matched all cards — Well done!'; }
+    } else {
+      firstCard.classList.remove('flipped'); secondCard.classList.remove('flipped'); firstCard.textContent = ''; secondCard.textContent = '';
+    }
+    firstCard = null; secondCard = null; busy = false;
+  }, 700);
+}
+
+document.getElementById('memory-restart').addEventListener('click', initMemory);
+
+// Initialize nothing visible on load; menu shown
+// For convenience: open first game if user wants — but we won't auto-open
+
+</script>
+</body>
+</html>
